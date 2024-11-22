@@ -21,8 +21,10 @@ namespace MonoGameAlgorithmTesting
         float angleOfLine;
         int rectangleFactor = 8;
         int dotSize = 2;
+        
 
-        List<Vector2> rectangleCoordinates = new List<Vector2>();
+
+        List<List<int>> rectangleCoordinates = new List<List<int>>();
 
         public Game1()
         {
@@ -37,14 +39,16 @@ namespace MonoGameAlgorithmTesting
             line = new Texture2D(_graphics.GraphicsDevice, 1, 1, false, SurfaceFormat.Color);
             line.SetData(new[] { Color.White });
             angleOfLine = (float)(2 + MathHelper.Pi);
-
+            Random rng = new Random();
             timer = 60 * 5;
-            for (int i = 0; i < GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Height / rectangleFactor; i++) 
+            for (int i = 0; i < 44; i++) 
             {
-                for (int j = 0; j < GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Width / rectangleFactor; j++)
+                List<int> row = new List<int>();
+                for (int j = 0; j < 44; j++)
                 {
-                    rectangleCoordinates.Add(new Vector2(j * rectangleFactor, i * rectangleFactor));
+                    row.Add(rng.Next(0,2));
                 }
+                rectangleCoordinates.Add(row);
             }
             // TODO: Add your initialization logic here
 
@@ -109,20 +113,36 @@ namespace MonoGameAlgorithmTesting
             base.Draw(gameTime);
             
             spriteBatch.Begin();
+            float resolutionX =1+ GraphicsDevice.Viewport.Width / rectangleCoordinates[0].Count;
+            float resolutionY =1+ GraphicsDevice.Viewport.Height / rectangleCoordinates.Count;
+
             for (int i = 0; i < rectangleCoordinates.Count; i++)
             {
-                Vector2 vec = rectangleCoordinates[i];
-                spriteBatch.Draw(whiteRectangle, new Rectangle((int)vec.X, (int)vec.Y, dotSize, dotSize), 
-                                Color.Chocolate);
-
-                if(i < rectangleCoordinates.Count - 1)
+                for(int j = 0; j < rectangleCoordinates.Count; j++) 
                 {
-                    DrawLine(vec, rectangleCoordinates[i + 1], new Vector2(vec.X - rectangleCoordinates[i + 1].X, vec.Y - rectangleCoordinates[i + 1].Y), 0f, Color.White);
+
+                    if (rectangleCoordinates[i][j] == 1)
+                    {
+                        spriteBatch.Draw(whiteRectangle, new Rectangle(
+                            (int)(j * resolutionX),
+                            (int)(i * resolutionY),
+                            2,
+                            2),
+                            Color.Green);
+                    }
+                    else
+                    {
+                        spriteBatch.Draw(whiteRectangle, new Rectangle(
+                            (int)(j * resolutionX),
+                            (int)(i * resolutionY),
+                            2,
+                            2),
+                            Color.Red);
+                    }
+
                 }
             }
-
-
-
+            MarchingSquares(resolutionX, resolutionY);
             spriteBatch.End(); 
             // TODO: Add your drawing code here
         }
@@ -132,10 +152,104 @@ namespace MonoGameAlgorithmTesting
             return (double) (Math.PI / 180) * angle;
         }
 
-        private void DrawLine(Vector2 firstPosition, Vector2 secondPosition, Vector2 dimensions, float lineAngle, Color color)
+        private void DrawLine(Vector2 start, Vector2 end, Color color)
         {
-            float angle = (float) DegreesToRadians(Math.Atan2(secondPosition.X - firstPosition.X, secondPosition.Y - firstPosition.Y));
-            spriteBatch.Draw(line, new Rectangle((int)firstPosition.X,(int)firstPosition.Y, (int)dimensions.X, (int)dimensions.Y), null, color, angle, new Vector2(0, 0), SpriteEffects.None, 0);
+            // Calculate the length and angle of the line
+            float dx = end.X - start.X;
+            float dy = end.Y - start.Y;
+            float length = (float)Math.Sqrt(dx * dx + dy * dy);
+            float angle = (float)Math.Atan2(dy, dx);
+            float resolutionX = GraphicsDevice.Viewport.Width / rectangleCoordinates[0].Count;
+            float resolutionY = GraphicsDevice.Viewport.Height / rectangleCoordinates.Count;
+
+            // Draw the line using spriteBatch
+            spriteBatch.Draw(line,
+                             new Rectangle((int)start.X, (int)start.Y, (int)length, (int) 1), // 1-pixel height
+                             null,
+                             color,
+                             angle,
+                             new Vector2(0,0),
+                             SpriteEffects.None,
+                             0);
+        }
+
+        private void MarchingSquares(float resolutionX, float resolutionY)
+        {
+
+            for (int i = 0; i < rectangleCoordinates.Count - 1; i++)
+            {
+                for (int j = 0; j < rectangleCoordinates[i].Count - 1; j++)
+                {
+                    float x = j * resolutionX;
+                    float y = i * resolutionY;
+                    Vector2 a = new Vector2(x + resolutionX * 0.5f, y);
+                    Vector2 b = new Vector2(x + resolutionX, y + resolutionY * 0.5f);
+                    Vector2 c = new Vector2(x + resolutionX * 0.5f, y + resolutionY);
+                    Vector2 d = new Vector2(x, y + resolutionY * 0.5f);
+                    int state = GetState(rectangleCoordinates[i][j],
+                                         rectangleCoordinates[i][j + 1],
+                                         rectangleCoordinates[i + 1][j + 1],
+                                         rectangleCoordinates[i + 1][j]);
+
+                    switch (state)
+                    {
+                        case 0:
+                            break;
+                        case 1:
+                            DrawLine(c, d, Color.White);
+                            break;
+                        case 2:
+                            DrawLine(b, c, Color.White);
+                            break;
+                        case 3:
+                            DrawLine(b, d, Color.White);
+                            break;
+                        case 4:
+                            DrawLine(a, b, Color.White);
+                            break;
+                        case 5:
+                            DrawLine(a, d, Color.White);
+                            DrawLine(b, c, Color.White);
+                            break;
+                        case 6:
+                            DrawLine(a, c, Color.White);
+                            break;
+                        case 7:
+                            DrawLine(a, d, Color.White);
+                            break;
+                        case 8:
+                            DrawLine(a, d, Color.White);
+                            break;
+                        case 9:
+                            DrawLine(a, c, Color.White);
+                            break;
+                        case 10:
+                            DrawLine(a, b, Color.White);
+                            DrawLine(c, d, Color.White);
+                            break;
+                        case 11:
+                            DrawLine(a, b, Color.White);
+                            break;
+                        case 12:
+                            DrawLine(b, d, Color.White);
+                            break;
+                        case 13:
+                            DrawLine(b, c, Color.White);
+                            break;
+                        case 14:
+                            DrawLine(c, d, Color.White);
+                            break;
+                        case 15:
+                            break;
+                    }
+                    
+                }
+            }
+        }
+
+        private int GetState(int a, int b, int c, int d) 
+        {
+            return a * 8 + b * 4 + c * 2 + d * 1;
         }
     }
 }
